@@ -125,15 +125,15 @@ box-shadow:0 2px 6px rgba(0,0,0,0.3);
 
 #panelCampana{
 background:white;
-padding:12px 14px;
-font-size:13px;
+padding:6px 8px;
+font-size:11px;
 box-shadow:0 2px 10px rgba(0,0,0,0.25);
-border-radius:10px;
-min-width:190px;
+border-radius:8px;
+min-width:110px;
 }
 
 #panelCampana .campoSelector{
-margin-bottom:10px;
+margin-bottom:5px;
 }
 
 #panelCampana .campoSelector:last-child{
@@ -143,21 +143,21 @@ margin-bottom:0;
 #panelCampana label{
 display:flex;
 align-items:center;
-gap:6px;
+gap:4px;
 font-weight:700;
-font-size:11px;
-letter-spacing:.03em;
+font-size:9px;
+letter-spacing:.02em;
 text-transform:uppercase;
 color:#2e7d32;
-margin-bottom:4px;
+margin-bottom:2px;
 }
 
 #panelCampana select{
 width:100%;
-padding:7px 8px;
-font-size:13px;
+padding:3px 4px;
+font-size:11px;
 border:1px solid #d7d7d7;
-border-radius:6px;
+border-radius:5px;
 background:#fafafa;
 color:#222;
 cursor:pointer;
@@ -171,7 +171,7 @@ border-color:#2e7d32;
 #panelCampana select:focus{
 outline:none;
 border-color:#2e7d32;
-box-shadow:0 0 0 3px rgba(46,125,50,0.15);
+box-shadow:0 0 0 2px rgba(46,125,50,0.15);
 }
 
 /* LOGIN */
@@ -691,16 +691,40 @@ layer.setStyle({weight:1});
 
 });
 
-/* GPS */
+/* GPS con seguimiento continuo */
+
+let gpsWatching=false;
+let gpsMarker=null;
+let gpsCirculo=null;
 
 document.addEventListener("click",function(e){
 
 if(e.target && e.target.id==="gpsBtn"){
 
+if(!gpsWatching){
+
 map.locate({
 setView:true,
-maxZoom:16
+maxZoom:16,
+watch:true,
+enableHighAccuracy:true
 });
+
+gpsWatching=true;
+e.target.innerText="📍 GPS (activo)";
+e.target.style.background="#c8e6c9";
+
+}else{
+
+map.stopLocate();
+gpsWatching=false;
+e.target.innerText="📍 GPS";
+e.target.style.background="";
+
+if(gpsMarker){map.removeLayer(gpsMarker);gpsMarker=null;}
+if(gpsCirculo){map.removeLayer(gpsCirculo);gpsCirculo=null;}
+
+}
 
 }
 
@@ -708,12 +732,33 @@ maxZoom:16
 
 map.on("locationfound",function(e){
 
-L.circleMarker(e.latlng,{
+if(gpsMarker){
+
+gpsMarker.setLatLng(e.latlng);
+
+if(gpsCirculo){
+gpsCirculo.setLatLng(e.latlng);
+gpsCirculo.setRadius(e.accuracy);
+}
+
+}else{
+
+gpsMarker=L.circleMarker(e.latlng,{
 radius:8,
 color:"blue",
 fillColor:"blue",
 fillOpacity:0.9
 }).addTo(map);
+
+gpsCirculo=L.circle(e.latlng,{
+radius:e.accuracy,
+color:"blue",
+weight:1,
+fillColor:"blue",
+fillOpacity:0.08
+}).addTo(map);
+
+}
 
 });
 
@@ -730,13 +775,16 @@ document.getElementById("btnPresentacion").onclick=function(){
 presentacion=!presentacion;
 
 const filtros=document.getElementById("panelFiltros");
+const campana=document.getElementById("panelCampana");
 
 if(filtros){
-if(presentacion){
-filtros.style.display="none";
-}else{
-filtros.style.display="block";
+filtros.style.display=presentacion?"none":"block";
 }
+
+if(campana){
+/* el panel de Campaña/Cultivo esta dentro de un div de Leaflet control,
+   se oculta el contenedor padre para que no deje un hueco vacio */
+campana.parentElement.style.display=presentacion?"none":"block";
 }
 
 };
@@ -763,3 +811,4 @@ if(e.key==="Enter"){checkLogin();}
 
 </body>
 </html>
+
