@@ -125,27 +125,53 @@ box-shadow:0 2px 6px rgba(0,0,0,0.3);
 
 #panelCampana{
 background:white;
-padding:8px;
+padding:12px 14px;
 font-size:13px;
-box-shadow:0 0 6px rgba(0,0,0,0.3);
-border-radius:6px;
+box-shadow:0 2px 10px rgba(0,0,0,0.25);
+border-radius:10px;
+min-width:190px;
+}
+
+#panelCampana .campoSelector{
+margin-bottom:10px;
+}
+
+#panelCampana .campoSelector:last-child{
+margin-bottom:0;
 }
 
 #panelCampana label{
-display:block;
-font-weight:bold;
-margin-bottom:2px;
+display:flex;
+align-items:center;
+gap:6px;
+font-weight:700;
+font-size:11px;
+letter-spacing:.03em;
+text-transform:uppercase;
+color:#2e7d32;
+margin-bottom:4px;
 }
 
 #panelCampana select{
 width:100%;
-padding:4px;
-margin-bottom:8px;
+padding:7px 8px;
 font-size:13px;
+border:1px solid #d7d7d7;
+border-radius:6px;
+background:#fafafa;
+color:#222;
+cursor:pointer;
+transition:border-color .15s ease, box-shadow .15s ease;
 }
 
-#panelCampana select:last-child{
-margin-bottom:0;
+#panelCampana select:hover{
+border-color:#2e7d32;
+}
+
+#panelCampana select:focus{
+outline:none;
+border-color:#2e7d32;
+box-shadow:0 0 0 3px rgba(46,125,50,0.15);
 }
 
 /* LOGIN */
@@ -347,13 +373,18 @@ gpsControl.addTo(map);
 const campanaControl=L.control({position:"topleft"});
 
 campanaControl.onAdd=function(){
-const div=L.DomUtil.create("div","panelCampana");
+const div=L.DomUtil.create("div","");
+div.id="panelCampana";
 L.DomEvent.disableClickPropagation(div);
 div.innerHTML=`
-<label for="selectCampana">Campaña</label>
-<select id="selectCampana"></select>
-<label for="selectCultivo">Cultivo</label>
+<div class="campoSelector">
+<label for="selectCultivo">🌾 Cultivo</label>
 <select id="selectCultivo"></select>
+</div>
+<div class="campoSelector">
+<label for="selectCampana">📅 Campaña</label>
+<select id="selectCampana"></select>
+</div>
 `;
 return div;
 };
@@ -554,52 +585,94 @@ alert("No se pudo cargar el archivo "+entry.archivo);
 
 }
 
-/* Poblar selectores de Campaña / Cultivo */
+/* =========================================================
+   Selectores de Campaña / Cultivo (bidireccionales)
+   Se puede elegir primero Cultivo o primero Campaña, en
+   cualquier orden: cada selector siempre muestra solo las
+   opciones que tienen datos cargados para lo ya elegido en
+   el otro selector.
+   ========================================================= */
 
-function poblarSelectorCampana(){
-
-const selCampana=document.getElementById("selectCampana");
-
-const campanasUnicas=[...new Set(campanas.map(c=>c.campana))];
-
-selCampana.innerHTML=campanasUnicas.map(c=>`<option value="${c}">${c}</option>`).join("");
-
-selCampana.value=campanaActiva.campana;
-
-poblarSelectorCultivo();
-
-}
-
-function poblarSelectorCultivo(){
+function poblarSelectores(){
 
 const selCampana=document.getElementById("selectCampana");
 const selCultivo=document.getElementById("selectCultivo");
 
-const cultivosDisponibles=campanas.filter(c=>c.campana===selCampana.value);
+/* Cultivos disponibles para la campaña activa */
+const cultivosDeLaCampana=[...new Set(
+campanas.filter(c=>c.campana===campanaActiva.campana).map(c=>c.cultivo)
+)];
 
-selCultivo.innerHTML=cultivosDisponibles.map(c=>`<option value="${c.cultivo}">${c.cultivo}</option>`).join("");
+/* Campañas disponibles para el cultivo activo */
+const campanasDelCultivo=[...new Set(
+campanas.filter(c=>c.cultivo===campanaActiva.cultivo).map(c=>c.campana)
+)];
 
-const yaExiste=cultivosDisponibles.some(c=>c.cultivo===campanaActiva.cultivo && c.campana===selCampana.value);
-selCultivo.value=yaExiste?campanaActiva.cultivo:cultivosDisponibles[0].cultivo;
+selCultivo.innerHTML=cultivosDeLaCampana.map(c=>`<option value="${c}">${c}</option>`).join("");
+selCampana.innerHTML=campanasDelCultivo.map(c=>`<option value="${c}">${c}</option>`).join("");
+
+selCultivo.value=campanaActiva.cultivo;
+selCampana.value=campanaActiva.campana;
+
+}
+
+function onCambioCultivo(){
+
+const selCultivo=document.getElementById("selectCultivo");
+const cultivoElegido=selCultivo.value;
+
+/* Campañas disponibles para el cultivo recien elegido */
+const campanasDisponibles=campanas.filter(c=>c.cultivo===cultivoElegido);
+
+/* si la campaña actual no tiene ese cultivo, se mantiene la
+   mas reciente disponible (ultima del array) para ese cultivo */
+const mantieneCampana=campanasDisponibles.some(c=>c.campana===campanaActiva.campana);
+const nuevaCampana=mantieneCampana?campanaActiva.campana:campanasDisponibles[campanasDisponibles.length-1].campana;
+
+const entry=campanas.find(c=>c.cultivo===cultivoElegido && c.campana===nuevaCampana);
+
+if(entry){
+campanaActiva=entry;
+poblarSelectores();
+cargarCampana(entry);
+}
+
+}
+
+function onCambioCampana(){
+
+const selCampana=document.getElementById("selectCampana");
+const campanaElegida=selCampana.value;
+
+/* Cultivos disponibles para la campaña recien elegida */
+const cultivosDisponibles=campanas.filter(c=>c.campana===campanaElegida);
+
+const mantieneCultivo=cultivosDisponibles.some(c=>c.cultivo===campanaActiva.cultivo);
+const nuevoCultivo=mantieneCultivo?campanaActiva.cultivo:cultivosDisponibles[0].cultivo;
+
+const entry=campanas.find(c=>c.campana===campanaElegida && c.cultivo===nuevoCultivo);
+
+if(entry){
+campanaActiva=entry;
+poblarSelectores();
+cargarCampana(entry);
+}
 
 }
 
 document.addEventListener("change",function(e){
 
-if(e.target && e.target.id==="selectCampana"){
-poblarSelectorCultivo();
-const entry=campanas.find(c=>c.campana===document.getElementById("selectCampana").value && c.cultivo===document.getElementById("selectCultivo").value);
-if(entry) cargarCampana(entry);
+if(e.target && e.target.id==="selectCultivo"){
+onCambioCultivo();
 }
 
-if(e.target && e.target.id==="selectCultivo"){
-const entry=campanas.find(c=>c.campana===document.getElementById("selectCampana").value && c.cultivo===document.getElementById("selectCultivo").value);
-if(entry) cargarCampana(entry);
+if(e.target && e.target.id==="selectCampana"){
+onCambioCampana();
 }
 
 });
 
-poblarSelectorCampana();
+poblarSelectores();
 cargarCampana(campanaActiva);
 
 /* BUSCADOR */
