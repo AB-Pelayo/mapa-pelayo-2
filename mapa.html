@@ -598,20 +598,19 @@ function poblarSelectores(){
 const selCampana=document.getElementById("selectCampana");
 const selCultivo=document.getElementById("selectCultivo");
 
-/* Cultivos disponibles para la campaña activa */
-const cultivosDeLaCampana=[...new Set(
-campanas.filter(c=>c.campana===campanaActiva.campana).map(c=>c.cultivo)
-)];
+/* Cultivo: SIEMPRE se muestran todos los cultivos disponibles,
+   sin importar que campaña este seleccionada. Esto permite
+   elegir un cultivo aunque la campaña activa no lo tenga. */
+const todosLosCultivos=[...new Set(campanas.map(c=>c.cultivo))];
+selCultivo.innerHTML=todosLosCultivos.map(c=>`<option value="${c}">${c}</option>`).join("");
+selCultivo.value=campanaActiva.cultivo;
 
-/* Campañas disponibles para el cultivo activo */
+/* Campaña: se muestran solo las campañas que existen para el
+   cultivo actualmente elegido */
 const campanasDelCultivo=[...new Set(
 campanas.filter(c=>c.cultivo===campanaActiva.cultivo).map(c=>c.campana)
 )];
-
-selCultivo.innerHTML=cultivosDeLaCampana.map(c=>`<option value="${c}">${c}</option>`).join("");
 selCampana.innerHTML=campanasDelCultivo.map(c=>`<option value="${c}">${c}</option>`).join("");
-
-selCultivo.value=campanaActiva.cultivo;
 selCampana.value=campanaActiva.campana;
 
 }
@@ -624,10 +623,9 @@ const cultivoElegido=selCultivo.value;
 /* Campañas disponibles para el cultivo recien elegido */
 const campanasDisponibles=campanas.filter(c=>c.cultivo===cultivoElegido);
 
-/* si la campaña actual no tiene ese cultivo, se mantiene la
-   mas reciente disponible (ultima del array) para ese cultivo */
-const mantieneCampana=campanasDisponibles.some(c=>c.campana===campanaActiva.campana);
-const nuevaCampana=mantieneCampana?campanaActiva.campana:campanasDisponibles[campanasDisponibles.length-1].campana;
+/* se toma la campaña mas reciente disponible para ese cultivo
+   (ultima definida en el array "campanas") */
+const nuevaCampana=campanasDisponibles[campanasDisponibles.length-1].campana;
 
 const entry=campanas.find(c=>c.cultivo===cultivoElegido && c.campana===nuevaCampana);
 
@@ -644,13 +642,8 @@ function onCambioCampana(){
 const selCampana=document.getElementById("selectCampana");
 const campanaElegida=selCampana.value;
 
-/* Cultivos disponibles para la campaña recien elegida */
-const cultivosDisponibles=campanas.filter(c=>c.campana===campanaElegida);
-
-const mantieneCultivo=cultivosDisponibles.some(c=>c.cultivo===campanaActiva.cultivo);
-const nuevoCultivo=mantieneCultivo?campanaActiva.cultivo:cultivosDisponibles[0].cultivo;
-
-const entry=campanas.find(c=>c.campana===campanaElegida && c.cultivo===nuevoCultivo);
+/* el cultivo se mantiene, solo cambia la campaña dentro de ese cultivo */
+const entry=campanas.find(c=>c.cultivo===campanaActiva.cultivo && c.campana===campanaElegida);
 
 if(entry){
 campanaActiva=entry;
